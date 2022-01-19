@@ -22,10 +22,12 @@
 # MAGIC   num_major_vessels int,
 # MAGIC   thalassemia int,
 # MAGIC   resultado int,
-# MAGIC   probabilidade double
+# MAGIC   probabilidade_Nao double,
+# MAGIC   probabilidade_Sim double,
+# MAGIC   data string
 # MAGIC )
 # MAGIC USING delta
-# MAGIC LOCATION '/data/heart/dadosPaciente'
+# MAGIC LOCATION '/data/heart/dadosPaciente/model'
 
 # COMMAND ----------
 

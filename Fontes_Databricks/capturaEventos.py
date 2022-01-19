@@ -1,26 +1,4 @@
 # Databricks notebook source
-try: 
-    import mlflow
-    import mlflow.sklearn
-    import pickle
-    #import sklearn.ensemble.forest
-except:
-    %pip install mlflow
-    #%pip install scikit-learn==0.21.3
-
-# COMMAND ----------
-
-# MAGIC %pip install sklearn
-
-# COMMAND ----------
-
-import mlflow
-import mlflow.sklearn
-import pickle
-import sklearn.ensemble.forest
-
-# COMMAND ----------
-
 #Configuracoes do EventHub
 connectionString = "Endpoint=sb://case2streamnamespace.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=VT3T7LKPle7IHkFo/gZ+Ta9mI3vFEgeDpS64dT9iob0=;EntityPath=dadoshearteventhub"
 
@@ -35,13 +13,14 @@ from pyspark.sql.types import *
 import pandas as pd
 import mlflow
 import mlflow.sklearn
+import mlflow.pyfunc
 import pickle
-import sklearn.ensemble.forest
 
 #Modelo
 model_name = 'Tunning'
 model_path = f"models:/{model_name}/Production"
-modelo = mlflow.pyfunc.load_model(model_path)
+#logged_model = 'runs:/4cae963b5bbf4309831b329660024b1e/best model'
+modelo = mlflow.sklearn.load_model(model_path)
 
 schema = StructType([ 
     StructField("pacienteId",StringType(),True), 
@@ -57,23 +36,34 @@ schema = StructType([
     StructField("st_depression", DoubleType(),True), 
     StructField("st_slope", IntegerType(),True), 
     StructField("num_major_vessels", IntegerType(),True),
-    StructField("thalassemia", IntegerType(),True)
+    StructField("thalassemia", IntegerType(),True),
+    StructField("resultado", IntegerType(),True),
+    StructField("probabilidade_Nao", DoubleType(),True),
+    StructField("probabilidade_Sim", DoubleType(),True),
+    StructField("data", StringType(),True)
   ])
 
-@pandas_udf(returnType=DoubleType())
-def udfModeloProb(cols): 
-    entrada = pd.DataFrame.from_dict(dict(zip(cols.index, cols.values))).T
-    target = modelo.predict(entrada)
-    proba = modelo.predict_proba(entrada)
-    return pd.Series(proba[0][target[0]])
+def gravarDados(dados): 
+    
+    dados.createOrReplaceTempView("transacao")
+    dados._jdf.sparkSession().sql(""" 
+        MERGE INTO heart.dadosPaciente AS tabela
+        USING transacao AS dados
+        ON tabela.pacienteId = dados.pacienteId
+        WHEN MATCHED THEN UPDATE SET
+            tabela.resultado = dados.resultado, tabela.probabilidade_Nao = dados.probabilidade_Nao, tabela.probabilidade_Sim = dados.probabilidade_Sim, tabela.data=current_date()
+        WHEN NOT MATCHED THEN INSERT
+            (pacienteId, age, sex, chest_pain_type, resting_blood_pressure, 
+             cholesterol, fasting_blood_sugar, rest_ecg, max_heart_rate_achieved, 
+             exercise_induced_angina, st_depression, st_slope, num_major_vessels, 
+             thalassemia, resultado, probabilidade_Nao, probabilidade_Sim, data) VALUES (
+             dados.pacienteId, dados.age, dados.sex, dados.chest_pain_type, dados.resting_blood_pressure, 
+             dados.cholesterol, dados.fasting_blood_sugar, dados.rest_ecg, dados.max_heart_rate_achieved, 
+             dados.exercise_induced_angina, dados.st_depression, dados.st_slope, dados.num_major_vessels, 
+             dados.thalassemia, dados.resultado, dados.probabilidade_Nao, dados.probabilidade_Sim, current_date())
+    """)
 
-@pandas_udf(returnType=IntegerType())
-def udfModeloTarget(cols): 
-    entrada = pd.DataFrame.from_dict(dict(zip(cols.index, cols.values))).T
-    target = modelo.predict(entrada)
-    return pd.Series(target[0])
-
-def runModelo(dados): 
+def prepararDados(dados): 
 
     #Inserindo valores FAKE devido ao one hot encoder / Dummies
     new_row = [{"pacienteId":"0", "age": 0, "sex": 0, "chest_pain_type": 1, "resting_blood_pressure": 145, "cholesterol": 233, "fasting_blood_sugar": 0, "rest_ecg": 0, "max_heart_rate_achieved": 150, "exercise_induced_angina": 0, "st_depression": 2.3, "st_slope": 1, "num_major_vessels": 0, "thalassemia": 0}]
@@ -105,11 +95,32 @@ def runModelo(dados):
                   .withColumn('st_slope', col('st_slope').cast('string'))
                   .withColumn('thalassemia', col('thalassemia').cast('string'))
                   )
-    dt_transfpd = dt_transf.toPandas()
-    dt_transfpd = pd.get_dummies(dt_transfpd, drop_first=True)
-    dt_transf = spark.createDataFrame(dt_transfpd)
+
+    #problemas
+    #dt_transfpd = dt_transf.select("*").toPandas()
+    #dt_transfpd = ps.get_dummies(dt_transfpd, drop_first=True)
+    #dt_transfNew = spark.createDataFrame(dt_transfpd)
+    #dt_transfNew = dt_transfpd
     
-    entrada_modelo = struct (
+    #One Hot manual
+    dt_transf = (dt_transf.withColumn("sex_male", when(col("sex") == 'male', 1).otherwise(0))
+                 .withColumn("chest_pain_type_atypical angina", when(col("chest_pain_type") == 'atypical angina', 1).otherwise(0))
+                 .withColumn("chest_pain_type_typical angina", when(col("chest_pain_type") == 'typical angina', 1).otherwise(0))
+                 .withColumn("chest_pain_type_non-anginal pain", when(col("chest_pain_type") == 'non-anginal pain', 1).otherwise(0))
+                 .withColumn("fasting_blood_sugar_lower than 120mg/ml", when(col("fasting_blood_sugar") == 'lower than 120mg/ml', 1).otherwise(0))
+                 .withColumn("rest_ecg_left ventricular hypertrophy", when(col("rest_ecg") == 'left ventricular hypertrophy', 1).otherwise(0))
+                 .withColumn("rest_ecg_normal", when(col("rest_ecg") == 'normal', 1).otherwise(0))
+                 .withColumn("exercise_induced_angina_yes", when(col("exercise_induced_angina") == 'yes', 1).otherwise(0))
+                 .withColumn("st_slope_flat", when(col("st_slope") == 'flat', 1).otherwise(0))
+                 .withColumn("st_slope_upsloping", when(col("st_slope") == 'upsloping', 1).otherwise(0))
+                 .withColumn("thalassemia_fixed defect", when(col("thalassemia") == 'fixed defect', 1).otherwise(0))
+                 .withColumn("thalassemia_normal", when(col("thalassemia") == 'normal', 1).otherwise(0))
+                 .withColumn("thalassemia_reversable defect", when(col("thalassemia") == 'reversable defect', 1).otherwise(0))
+                )
+
+    #Pegando as colunas de Entrada
+    dt_transf_cols = dt_transf.select(
+        'pacienteId',
         'age',
         'resting_blood_pressure',
         'cholesterol',
@@ -130,23 +141,36 @@ def runModelo(dados):
         'thalassemia_normal',
         'thalassemia_reversable defect'
     )
+    return dt_transf_cols.filter(col('age') > 0)
+
+def runModelo(df_modelo): 
 
     #Rodando o modelo
-    dt_transf = dt_transf\
-        .withColumn("resultado", udfModeloTarget(entrada_modelo))\
-        .withColumn("probabilidade", udfModeloProb(entrada_modelo))
-    dt_transf = dt_transf.select("pacienteId_1", "resultado", "probabilidade")
-    dt_transf = dt_transf.withColumnRenamed("pacienteId_1", "pacienteId")
-    dt = dt.join(dt_transf, ["pacienteId"])
-    dt = dt.filter(col('age') > 0)
-    return dt
+    entrada = df_modelo.drop("pacienteId").toPandas()
+    predictions_proba = modelo.predict_proba(entrada)
+    predictions = modelo.predict(entrada)
 
-def processarModelo(df_dados, epoch_id):
-    #Transformando os dados
-    df_saida = runModelo(df_dados)
+    df_prob = pd.DataFrame(predictions_proba, columns = ['probabilidade_Nao','probabilidade_Sim']) 
+    df_result = pd.DataFrame(predictions, columns = ['resultado'])
+
+    df_merge = pd.concat([df_result,df_prob], axis=1, ignore_index=False)
+    dados = spark.createDataFrame( pd.concat([df_modelo.select("pacienteId").toPandas(), df_merge], axis=1, ignore_index=False) )
     
-    df_saida.write.format("delta").mode("append").save("/data/heart/dadosPaciente")
+    return dados
 
+def processarDados(df_dados, epoch_id):
+    if (df_dados.rdd.isEmpty()):
+        return True
+    #Gravar Dados
+    df_dados = ( df_dados.withColumn("resultado", lit(-1))
+                        .withColumn("probabilidade_Nao", lit(-1.0))
+                        .withColumn("probabilidade_Sim", lit(-1.0))
+                )
+    dados_transf = prepararDados(df_dados)
+    df_saida = runModelo(dados_transf)
+    df_table = df_dados.drop("resultado","probabilidade_Nao","probabilidade_Sim").join(df_saida, ["pacienteId"])
+    gravarDados(df_table)
+    return True
 
 #Streaming 
 #Body vem como Binario - Parse o campo pra String
@@ -155,23 +179,4 @@ df_origem_stream = spark.readStream.format("eventhubs").options(**ehConf).load()
 df_origem_stream=df_origem_stream.withColumn("body", from_json(col("body"),schema))
 df_origem_stream=df_origem_stream.select("body.*")
 
-df_origem_stream.writeStream.format("delta").foreachBatch(processarModelo).outputMode("update").start()
-#.awaitTermination()
-
-
-# COMMAND ----------
-
-from pyspark.sql.functions import *
-from pyspark.sql.types import * 
-import pandas as pd
-import mlflow
-import mlflow.sklearn
-import pickle
-from sklearn.ensemble._forest import ForestClassifier
-
-#Modelo
-model_name = 'Tunning'
-model_path = f"models:/{model_name}/Production"
-modelo = mlflow.pyfunc.load_model(model_path)
-
-print(modelo.metadata)
+df_origem_stream.writeStream.format("delta").option("checkpointLocation","{}{}".format("/capturaEventos/", "_checkpoint")).option("ignoresChanges", "true").foreachBatch(processarDados).outputMode("update").start()
