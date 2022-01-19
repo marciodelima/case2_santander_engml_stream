@@ -10,10 +10,22 @@ BackEnd
 	https://github.com/marciodelima/case1_santander_engml_backend.git
 	
 
+Streaming
 
-Token - 60 dias
-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
+	https://github.com/marciodelima/case2_santander_engml_stream.git
+	
+
+
+Token - 60 dias - GIT
+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
 
 
 Token-AzureDevOps
 2olvfwxlvd7hb4xcgw23wlnne52xzrvwtfeaxtbkqd4nk5oeisnq
+
+
+Token - Databricks
+
+dapiebaa01a5183485b9d66ea9e59fb7b2cd-2
+
+
