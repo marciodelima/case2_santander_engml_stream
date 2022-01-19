@@ -1,0 +1,19 @@
+GitHub - Fontes
+
+Geral
+	https://github.com/marciodelima/case1_santander_engml_geral.git
+
+FrontEnd
+	https://github.com/marciodelima/case1_santander_engml_frontend.git	
+	
+BackEnd
+	https://github.com/marciodelima/case1_santander_engml_backend.git
+	
+
+
+Token - 60 dias
+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
+
+
+Token-AzureDevOps
+2olvfwxlvd7hb4xcgw23wlnne52xzrvwtfeaxtbkqd4nk5oeisnq

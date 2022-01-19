@@ -1,0 +1,28 @@
+artifact_path: best_estimator
+flavors:
+  python_function:
+    env: conda.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.pkl
+    python_version: 3.7.4
+  sklearn:
+    pickled_model: model.pkl
+    serialization_format: cloudpickle
+    sklearn_version: 1.0.2
+model_uuid: 5c78c3477d1e4a51ba8f6357fbaf5c59
+run_id: 786c2806d9a846a59b78c21f4d90b753
+signature:
+  inputs: '[{"name": "age", "type": "long"}, {"name": "resting_blood_pressure", "type":
+    "long"}, {"name": "cholesterol", "type": "long"}, {"name": "max_heart_rate_achieved",
+    "type": "long"}, {"name": "st_depression", "type": "double"}, {"name": "num_major_vessels",
+    "type": "long"}, {"name": "sex_male", "type": "integer"}, {"name": "chest_pain_type_atypical
+    angina", "type": "integer"}, {"name": "chest_pain_type_non-anginal pain", "type":
+    "integer"}, {"name": "chest_pain_type_typical angina", "type": "integer"}, {"name":
+    "fasting_blood_sugar_lower than 120mg/ml", "type": "integer"}, {"name": "rest_ecg_left
+    ventricular hypertrophy", "type": "integer"}, {"name": "rest_ecg_normal", "type":
+    "integer"}, {"name": "exercise_induced_angina_yes", "type": "integer"}, {"name":
+    "st_slope_flat", "type": "integer"}, {"name": "st_slope_upsloping", "type": "integer"},
+    {"name": "thalassemia_fixed defect", "type": "integer"}, {"name": "thalassemia_normal",
+    "type": "integer"}, {"name": "thalassemia_reversable defect", "type": "integer"}]'
+  outputs: '[{"type": "tensor", "tensor-spec": {"dtype": "int64", "shape": [-1]}}]'
+utc_time_created: '2022-01-19 00:15:18.527522'

@@ -1,0 +1,15 @@
+artifact_uri: file:///home/marcio/Case_Santander_ENGML/case2_streaming/Geral/fonte_original_tunning/mlruns/0/fe578198ea4e479d8e66bcf8e440411b/artifacts
+end_time: 1642552218270
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+name: ''
+run_id: fe578198ea4e479d8e66bcf8e440411b
+run_uuid: fe578198ea4e479d8e66bcf8e440411b
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1642551321771
+status: 3
+tags: []
+user_id: marcio
