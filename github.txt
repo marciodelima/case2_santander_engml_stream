@@ -17,7 +17,7 @@ Streaming
 
 
 Token - 60 dias - GIT
-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
+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
 
 
 Token-AzureDevOps
